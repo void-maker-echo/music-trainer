@@ -172,20 +172,14 @@ function initAudio() {
       },
       baseUrl: "https://tonejs.github.io/audio/salamander/",
       onload: () => {
-        audioReady = true;
-        document.querySelectorAll(".piano-loading").forEach(el => el.remove());
+        document.querySelectorAll(".piano-loading").forEach(el => { el.textContent = "钢琴音色就绪"; });
       },
-      attack: 0.01,
-      release: 1.2,
+      attack: 0.005,
+      release: 1.5,
       curve: "exponential",
-      volume: -6
+      volume: -4
     }).toDestination();
-    // Show loading indicator
-    var fb = document.getElementById("pitch-fb");
-    if (fb && !audioReady) {
-      fb.innerHTML = '<span class="piano-loading">加载钢琴音色中...</span>';
-      fb.className = "feedback";
-    }
+    audioReady = true;
     audioLoading = false;
   });
 }
