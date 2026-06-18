@@ -153,15 +153,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;background
 // ==================== 音频引擎 ====================
 let piano;
 let audioReady = false;
-let audioLoading = false;
 
 function initAudio() {
   if (audioReady) return Promise.resolve();
-  if (audioLoading) return new Promise(resolve => {
-    var check = setInterval(() => { if (audioReady) { clearInterval(check); resolve(); } }, 200);
-  });
-  audioLoading = true;
   return Tone.start().then(() => {
+    if (audioReady) return;
     piano = new Tone.Sampler({
       urls: {
         "C2": "C2.mp3", "D#2": "Ds2.mp3", "F#2": "Fs2.mp3", "A2": "A2.mp3",
@@ -171,16 +167,12 @@ function initAudio() {
         "C6": "C6.mp3", "D#6": "Ds6.mp3", "F#6": "Fs6.mp3", "A6": "A6.mp3"
       },
       baseUrl: "https://tonejs.github.io/audio/salamander/",
-      onload: () => {
-        document.querySelectorAll(".piano-loading").forEach(el => { el.textContent = "钢琴音色就绪"; });
-      },
       attack: 0.005,
       release: 1.5,
       curve: "exponential",
       volume: -4
     }).toDestination();
     audioReady = true;
-    audioLoading = false;
   });
 }
 
