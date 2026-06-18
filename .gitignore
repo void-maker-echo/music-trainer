@@ -1,0 +1,8 @@
+﻿# Build scripts (not needed for deployment)
+build_*.py
+check*.py
+fix_*.py
+patch_sw.py
+read.py
+scan*.py
+verify.py
