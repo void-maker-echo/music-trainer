@@ -56,6 +56,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;background
 .staff-wrap{background:#fff;border-radius:8px;padding:4px;margin:8px 0;overflow-x:auto;display:flex;justify-content:center}
 .staff-wrap svg{display:block}
 .btn-a4{background:#888;color:#fff;margin-left:4px}
+.octave-nav{display:flex;align-items:center;justify-content:center;gap:4px;margin-bottom:4px}
+.octave-nav button{background:rgba(255,255,255,.1);border:none;color:var(--text);width:32px;height:32px;border-radius:50%;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.octave-nav button:active{background:var(--accent)}
+.octave-nav .octave-label{font-size:.7rem;color:var(--sub);min-width:60px;text-align:center}
 @media(min-width:480px){.white-key{width:52px;height:160px}.black-key{width:36px;height:100px}.theory-grid{grid-template-columns:repeat(3,1fr)}}
 @media(min-width:768px){.view{padding:24px}.theory-grid{grid-template-columns:repeat(4,1fr)}}
 </style>
@@ -95,7 +99,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;background
 <div class="progress-bar"><div class="progress-fill" id="pitch-progress" style="width:0"></div></div>
 <div class="feedback" id="pitch-fb">点击下方 ▶ 听音，然后在钢琴上选出正确的音</div>
 <div style="text-align:center;margin:8px 0"><button class="btn btn-primary" id="pitch-play-btn">▶ 播放</button><button class="btn btn-repeat btn-sm" id="pitch-replay-btn">🔁 重播</button><button class="btn btn-sm btn-a4" onclick="playStandardA()">A4</button></div></div>
-<div class="card" style="padding:8px"><div class="piano-wrap"><div class="piano" id="pitch-piano"></div></div></div>
+<div class="card" style="padding:8px"><div class="octave-nav"><button id="pitch-oct-left">◀</button><span class="octave-label" id="pitch-oct-label">C3 - B5</span><button id="pitch-oct-right">▶</button></div><div class="piano-wrap" id="pitch-piano-wrap"><div class="piano" id="pitch-piano"></div></div></div>
 <div class="card"><div class="staff-wrap" id="pitch-staff"></div></div>
 </div>
 
@@ -107,7 +111,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;background
 <div class="feedback" id="staff-fb">看五线谱，在钢琴上选出正确的音</div>
 <div style="text-align:center;margin:8px 0"><button class="btn btn-primary" id="staff-play-btn">新题</button><button class="btn btn-repeat btn-sm" id="staff-replay-btn">重播</button><button class="btn btn-sm btn-a4" onclick="playStandardA()">A4</button></div></div>
 <div class="card"><div class="staff-wrap" id="staff-staff"></div></div>
-<div class="card" style="padding:8px"><div class="piano-wrap"><div class="piano" id="staff-piano"></div></div></div>
+<div class="card" style="padding:8px"><div class="octave-nav"><button id="staff-oct-left">◀</button><span class="octave-label" id="staff-oct-label">C3 - B5</span><button id="staff-oct-right">▶</button></div><div class="piano-wrap" id="staff-piano-wrap"><div class="piano" id="staff-piano"></div></div></div>
 </div>
 
 <div class="view" id="view-chord">
@@ -366,8 +370,8 @@ function renderPiano(containerId, startOctave, numOctaves, onClick) {
     }
   }
   const totalWhites = whiteIndex;
-  const wkWidth = Math.min(52, Math.floor((window.innerWidth - 40) / totalWhites));
-  const bkWidth = Math.max(20, Math.floor(wkWidth * 0.6));
+  const wkWidth = Math.min(48, Math.floor((window.innerWidth - 32) / totalWhites));
+  const bkWidth = Math.max(18, Math.floor(wkWidth * 0.6));
 
   // Render whites
   for (const item of allNotes) {
@@ -375,32 +379,31 @@ function renderPiano(containerId, startOctave, numOctaves, onClick) {
       const key = document.createElement("div");
       key.className = "white-key";
       key.style.width = wkWidth + "px";
+      key.style.height = (wkWidth < 38 ? "110px" : "140px");
       key.dataset.note = item.note;
       key.dataset.octave = item.octave;
-      key.innerHTML = '<span class="label">' + item.note + '</span>';
+      if (wkWidth >= 32) key.innerHTML = '<span class="label">' + item.note + '</span>';
       key.addEventListener("click", () => onClick(item.note, item.octave));
       container.appendChild(key);
     }
   }
 
   // Render blacks
-  const wkGap = wkWidth;
   const blackOffsets = { "C#": 0.65, "D#": 1.65, "F#": 3.65, "G#": 4.65, "A#": 5.65 };
   for (let o = startOctave; o < startOctave + numOctaves; o++) {
     for (const bk of BLACK_KEYS) {
-      const wkIdx = (o - startOctave) * 7 + WHITE_KEYS.indexOf(bk[0]);
-      const offset = blackOffsets[bk];
       const baseIdx = (o - startOctave) * 7;
+      const offset = blackOffsets[bk];
       const left = (baseIdx + offset) * wkWidth - bkWidth / 2;
 
       const key = document.createElement("div");
       key.className = "black-key";
       key.style.width = bkWidth + "px";
-      key.style.height = (wkWidth < 44 ? 60 : 90) + "px";
+      key.style.height = (wkWidth < 38 ? "70px" : "90px") + "px";
       key.style.left = left + "px";
       key.dataset.note = bk;
       key.dataset.octave = o;
-      if (wkWidth < 40) key.innerHTML = '<span class="label" style="font-size:.5rem">' + bk + '</span>';
+      if (wkWidth >= 32) key.innerHTML = '<span class="label" style="font-size:.55rem">' + bk + '</span>';
       key.addEventListener("click", () => onClick(bk, o));
       container.appendChild(key);
     }
@@ -473,10 +476,24 @@ const pitchGame = {
 
   getRange() {
     switch(this.difficulty) {
-      case "easy": return { octaves: [4], notes: WHITE_KEYS }; // 1 octave white keys only
-      case "medium": return { octaves: [4], notes: NOTES }; // 1 octave all keys
-      case "hard": return { octaves: [4,5], notes: NOTES }; // 2 octaves
+      case "easy": return { octaves: [3,4,5], notes: WHITE_KEYS };
+      case "medium": return { octaves: [3,4,5], notes: NOTES };
+      case "hard": return { octaves: [3,4,5], notes: NOTES };
     }
+  },
+
+  scrollToNote(note, octave) {
+    var wrap = document.getElementById("pitch-piano-wrap");
+    if (!wrap) return;
+    var keys = wrap.querySelectorAll(".white-key");
+    for (var i = 0; i < keys.length; i++) {
+      if (keys[i].dataset.note === note && keys[i].dataset.octave == octave) {
+        var kl = keys[i].offsetLeft;
+        wrap.scrollTo({ left: Math.max(0, kl - wrap.clientWidth / 2 + 20), behavior: "smooth" });
+        break;
+      }
+    }
+    document.getElementById("pitch-oct-label").textContent = "C" + octave + " 附近";
   },
 
   init() {
@@ -488,12 +505,20 @@ const pitchGame = {
     ], (v) => { self.difficulty = v; self.reset(); });
 
     this.reset();
-    renderPiano("pitch-piano", 4, (this.difficulty === "hard" ? 2 : 1), (note, octave) => {
+    renderPiano("pitch-piano", 3, 3, (note, octave) => {
       self.onKeyPress(note, octave);
     });
 
     document.getElementById("pitch-play-btn").addEventListener("click", () => self.playNote());
     document.getElementById("pitch-replay-btn").addEventListener("click", () => self.replay());
+    document.getElementById("pitch-oct-left").addEventListener("click", () => {
+      var w = document.getElementById("pitch-piano-wrap");
+      if (w) w.scrollBy({ left: -w.clientWidth * 0.7, behavior: "smooth" });
+    });
+    document.getElementById("pitch-oct-right").addEventListener("click", () => {
+      var w = document.getElementById("pitch-piano-wrap");
+      if (w) w.scrollBy({ left: w.clientWidth * 0.7, behavior: "smooth" });
+    });
   },
 
   reset() {
@@ -501,7 +526,7 @@ const pitchGame = {
     this.round = 0;
     this.locked = false;
     this.updateUI();
-    renderPiano("pitch-piano", 4, (this.difficulty === "hard" ? 2 : 1), (note, octave) => {
+    renderPiano("pitch-piano", 3, 3, (note, octave) => {
       pitchGame.onKeyPress(note, octave);
     });
     document.getElementById("pitch-fb").textContent = "点击 ▶ 听音，然后在钢琴上选出正确的音";
@@ -524,6 +549,7 @@ const pitchGame = {
       this.currentOctave = octave;
       synth.triggerAttackRelease(note + octave, "2n");
       renderStaff("pitch-staff", note, octave);
+      this.scrollToNote(note, octave);
       document.getElementById("pitch-fb").textContent = "听好了！在钢琴上选出你听到的音 🎵";
       document.getElementById("pitch-fb").className = "feedback";
     });
@@ -587,9 +613,21 @@ const staffGame = {
 
   getRange() {
     switch(this.difficulty) {
-      case "easy": return { octaves: [4], notes: WHITE_KEYS };
-      case "medium": return { octaves: [4], notes: NOTES };
-      case "hard": return { octaves: [4,5], notes: NOTES };
+      case "easy": return { octaves: [3,4,5], notes: WHITE_KEYS };
+      case "medium": return { octaves: [3,4,5], notes: NOTES };
+      case "hard": return { octaves: [3,4,5], notes: NOTES };
+    }
+  },
+
+  scrollToNote(note, octave) {
+    var wrap = document.getElementById("staff-piano-wrap");
+    if (!wrap) return;
+    var keys = wrap.querySelectorAll(".white-key");
+    for (var i = 0; i < keys.length; i++) {
+      if (keys[i].dataset.note === note && keys[i].dataset.octave == octave) {
+        wrap.scrollTo({ left: Math.max(0, keys[i].offsetLeft - wrap.clientWidth / 2 + 20), behavior: "smooth" });
+        break;
+      }
     }
   },
 
@@ -603,13 +641,21 @@ const staffGame = {
     this.reset();
     document.getElementById("staff-play-btn").addEventListener("click", function() { self.newQuestion(); });
     document.getElementById("staff-replay-btn").addEventListener("click", function() { self.replay(); });
+    document.getElementById("staff-oct-left").addEventListener("click", function() {
+      var w = document.getElementById("staff-piano-wrap");
+      if (w) w.scrollBy({ left: -w.clientWidth * 0.7, behavior: "smooth" });
+    });
+    document.getElementById("staff-oct-right").addEventListener("click", function() {
+      var w = document.getElementById("staff-piano-wrap");
+      if (w) w.scrollBy({ left: w.clientWidth * 0.7, behavior: "smooth" });
+    });
   },
 
   reset() {
     this.score = 0; this.round = 0; this.locked = false;
     this.updateUI();
     var octaves = this.difficulty === "hard" ? 2 : 1;
-    renderPiano("staff-piano", 4, octaves, function(note, octave) { staffGame.onKeyPress(note, octave); });
+    renderPiano("staff-piano", 3, 3, function(note, octave) { staffGame.onKeyPress(note, octave); });
     document.getElementById("staff-fb").textContent = "看五线谱，在钢琴上选出正确的音";
     document.getElementById("staff-fb").className = "feedback";
   },
@@ -622,11 +668,13 @@ const staffGame = {
 
   newQuestion() {
     if (this.locked) return;
+    var self = this;
     initAudio().then(function() {
       var range = staffGame.getRange();
       staffGame.currentOctave = randomItem(range.octaves);
       staffGame.currentNote = randomItem(range.notes);
       renderStaff("staff-staff", staffGame.currentNote, staffGame.currentOctave);
+      staffGame.scrollToNote(staffGame.currentNote, staffGame.currentOctave);
       document.getElementById("staff-fb").textContent = "看五线谱识音！点击钢琴选出正确的音 🎵";
       document.getElementById("staff-fb").className = "feedback";
     });
