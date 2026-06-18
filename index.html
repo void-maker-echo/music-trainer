@@ -805,7 +805,7 @@ const chordGame = {
         return note + octave;
       });
 
-      this.currentNotes.forEach(n => if (piano) piano.triggerAttack(n, Tone.now()));
+      this.currentNotes.forEach(n => { if (piano) piano.triggerAttack(n, Tone.now()); });
       this._chordTimer = setTimeout(() => { if (piano) piano.releaseAll(); this._chordTimer = null; }, 2500);
 
       document.getElementById("chord-fb").textContent = "听好了！选出和弦类型 🎵";
@@ -817,7 +817,7 @@ const chordGame = {
     if (this.currentNotes && !this.locked) {
       this.stopChord();
       initAudio().then(() => {
-        this.currentNotes.forEach(n => if (piano) piano.triggerAttack(n, Tone.now()));
+        this.currentNotes.forEach(n => { if (piano) piano.triggerAttack(n, Tone.now()); });
         this._chordTimer = setTimeout(() => { if (piano) piano.releaseAll(); this._chordTimer = null; }, 2500);
       });
     }
@@ -849,7 +849,7 @@ const chordGame = {
       setTimeout(() => {
         if (this.currentNotes) {
           if (piano) piano.releaseAll();
-          this.currentNotes.forEach(n => if (piano) piano.triggerAttack(n, Tone.now()));
+          this.currentNotes.forEach(n => { if (piano) piano.triggerAttack(n, Tone.now()); });
           setTimeout(() => { if (piano) piano.releaseAll(); }, 2500);
         }
       }, 500);
