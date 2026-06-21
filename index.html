@@ -16,8 +16,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;background
 .header .login-status{position:absolute;right:12px;top:14px;border:1px solid rgba(255,255,255,.18);border-radius:18px;background:rgba(255,255,255,.06);color:var(--sub);font-size:.68rem;padding:6px 10px;cursor:pointer}
 .header h1{font-size:1.3rem;letter-spacing:2px;background:linear-gradient(90deg,var(--accent),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 .header .sub{font-size:.75rem;color:var(--sub);margin-top:2px}
-.tab-bar{position:fixed;bottom:0;left:0;right:0;z-index:100;display:flex;background:rgba(22,33,62,.95);backdrop-filter:blur(16px);border-top:1px solid rgba(255,255,255,.08);padding:6px 0 env(safe-area-inset-bottom,6px)}
-.tab-btn{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 2px;border:none;background:none;color:var(--sub);font-size:.6rem;cursor:pointer;transition:.2s}
+.tab-bar{position:fixed;bottom:0;left:0;right:0;z-index:100;display:flex;justify-content:flex-start;overflow-x:auto;background:rgba(22,33,62,.95);backdrop-filter:blur(16px);border-top:1px solid rgba(255,255,255,.08);padding:6px 0 env(safe-area-inset-bottom,6px);scrollbar-width:none}
+.tab-bar::-webkit-scrollbar{display:none}.tab-btn{flex:0 0 64px;min-width:64px;display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 2px;border:none;background:none;color:var(--sub);font-size:.6rem;cursor:pointer;transition:.2s}
 .tab-btn.active{color:var(--accent)}.tab-btn .icon{font-size:1.15rem}.tab-btn span{white-space:nowrap}
 .view{display:none;padding:16px;max-width:640px;margin:0 auto}.view.active{display:block}
 .card{background:var(--card);border-radius:var(--radius);padding:20px;margin-bottom:16px;box-shadow:var(--shadow)}
@@ -28,6 +28,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;background
 .btn-choice:active,.btn-choice.selected{border-color:var(--accent);background:rgba(233,69,96,.1)}
 .btn-choice.correct{border-color:var(--green)!important;background:rgba(78,204,163,.15)!important}
 .btn-choice.wrong{border-color:var(--accent)!important;background:rgba(233,69,96,.15)!important;animation:shake .4s}
+.choice-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.choice-grid .btn-choice{margin-bottom:0;text-align:center}.choice-grid .btn-choice.span-full{grid-column:1/-1}
 .btn-sm{padding:8px 16px;font-size:.8rem;min-height:36px}.btn-repeat{background:var(--blue);color:#fff;margin-left:8px}
 @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
 .piano-wrap{overflow-x:auto;margin:12px 0;padding-bottom:8px}
@@ -91,8 +92,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;background
 <div class="theory-grid">
 <div class="theory-card" onclick="switchTab(&apos;theory&apos;)"><div class="emoji">📖</div><div class="title">基础乐理</div><div class="desc">音名·音程·和弦构成</div></div>
 <div class="theory-card" onclick="switchTab(&apos;pitch&apos;)"><div class="emoji">🎹</div><div class="title">音高识别</div><div class="desc">听音辨音高</div></div>
-<div class="theory-card" onclick="switchTab(&apos;interval&apos;)"><div class="emoji">📏</div><div class="title">音程听辨</div><div class="desc">旋律·和声音程</div></div>
-<div class="theory-card" onclick="switchTab(&apos;chord&apos;)"><div class="emoji">🎸</div><div class="title">和弦听辨</div><div class="desc">大三·小三·属七等</div></div>
+<div class="theory-card" onclick="switchTab(&apos;interval&apos;)"><div class="emoji">📏</div><div class="title">音程辨认</div><div class="desc">旋律·和声音程</div></div>
+<div class="theory-card" onclick="switchTab(&apos;chord&apos;)"><div class="emoji">🎸</div><div class="title">三和弦辨认</div><div class="desc">大三·小三·增三·减三·sus4</div></div>
+<div class="theory-card" onclick="switchTab(&apos;triadfull&apos;)"><div class="emoji">🔁</div><div class="title">三和弦综合</div><div class="desc">类型 + 转位</div></div>
+<div class="theory-card" onclick="switchTab(&apos;seventh&apos;)"><div class="emoji">🎷</div><div class="title">七和弦辨认</div><div class="desc">大小七·小大七等</div></div>
+<div class="theory-card" onclick="switchTab(&apos;seventhfull&apos;)"><div class="emoji">🧩</div><div class="title">七和弦综合</div><div class="desc">类型 + 原位/转位</div></div>
 <div class="theory-card" onclick="switchTab(&apos;mode&apos;)"><div class="emoji">🎼</div><div class="title">调式听辨</div><div class="desc">大小调·中古调式</div></div>
 </div></div>
 </div>
@@ -131,17 +135,43 @@ body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;background
 <div class="progress-bar"><div class="progress-fill" id="interval-progress" style="width:0"></div></div>
 <div class="feedback" id="interval-fb">点击播放，选出你听到的音程</div>
 <div style="text-align:center;margin:8px 0"><button class="btn btn-primary" id="interval-play-btn">▶ 播放音程</button><button class="btn btn-repeat btn-sm" id="interval-replay-btn">🔁 重播</button><button class="btn btn-sm btn-a4" onclick="playStandardA()">A4</button></div>
-<div id="interval-choices"></div></div>
+<div class="choice-grid" id="interval-choices"></div></div>
 </div>
 
 <div class="view" id="view-chord">
-<div class="card"><h2>🎸 和弦听辨</h2>
-<div class="diff-row" id="chord-diff"></div>
-<div class="score-bar"><div class="score-item"><div class="score-val" id="chord-score">0</div><div class="score-label">得分</div></div><div class="score-item"><div class="score-val" id="chord-round">0/10</div><div class="score-label">进度</div></div></div>
-<div class="progress-bar"><div class="progress-fill" id="chord-progress" style="width:0"></div></div>
-<div class="feedback" id="chord-fb">点击播放，选出你听到的和弦类型</div>
-<div style="text-align:center;margin:8px 0"><button class="btn btn-primary" id="chord-play-btn">▶ 播放和弦</button><button class="btn btn-repeat btn-sm" id="chord-replay-btn">🔁 重播</button><button class="btn btn-sm btn-a4" onclick="playStandardA()">A4</button><button class="btn btn-sm" style="background:#e94560;color:#fff;margin-left:4px" id="chord-stop-btn" onclick="chordGame.stopChord()">■ 停止</button></div>
-<div id="chord-choices"></div></div>
+<div class="card"><h2>🎸 三和弦辨认</h2>
+<div class="score-bar"><div class="score-item"><div class="score-val" id="triad-score">0</div><div class="score-label">得分</div></div><div class="score-item"><div class="score-val" id="triad-round">0/10</div><div class="score-label">进度</div></div></div>
+<div class="progress-bar"><div class="progress-fill" id="triad-progress" style="width:0"></div></div>
+<div class="feedback" id="triad-fb">点击播放，选择你听到的三和弦。</div>
+<div style="text-align:center;margin:8px 0"><button class="btn btn-primary" id="triad-play-btn">▶ 播放三和弦</button><button class="btn btn-repeat btn-sm" id="triad-replay-btn">🔁 重播</button><button class="btn btn-sm btn-a4" onclick="playStandardA()">A4</button></div>
+<div class="choice-grid" id="triad-choices"></div></div>
+</div>
+
+<div class="view" id="view-triadfull">
+<div class="card"><h2>🎸 三和弦综合</h2>
+<div class="score-bar"><div class="score-item"><div class="score-val" id="triadfull-score">0</div><div class="score-label">得分</div></div><div class="score-item"><div class="score-val" id="triadfull-round">0/10</div><div class="score-label">进度</div></div></div>
+<div class="progress-bar"><div class="progress-fill" id="triadfull-progress" style="width:0"></div></div>
+<div class="feedback" id="triadfull-fb">点击播放，选择和弦类型与转位。</div>
+<div style="text-align:center;margin:8px 0"><button class="btn btn-primary" id="triadfull-play-btn">▶ 播放三和弦</button><button class="btn btn-repeat btn-sm" id="triadfull-replay-btn">🔁 重播</button><button class="btn btn-sm btn-a4" onclick="playStandardA()">A4</button></div>
+<div class="choice-grid" id="triadfull-choices"></div></div>
+</div>
+
+<div class="view" id="view-seventh">
+<div class="card"><h2>🎷 七和弦辨认</h2>
+<div class="score-bar"><div class="score-item"><div class="score-val" id="seventh-score">0</div><div class="score-label">得分</div></div><div class="score-item"><div class="score-val" id="seventh-round">0/10</div><div class="score-label">进度</div></div></div>
+<div class="progress-bar"><div class="progress-fill" id="seventh-progress" style="width:0"></div></div>
+<div class="feedback" id="seventh-fb">点击播放，选择你听到的七和弦。</div>
+<div style="text-align:center;margin:8px 0"><button class="btn btn-primary" id="seventh-play-btn">▶ 播放七和弦</button><button class="btn btn-repeat btn-sm" id="seventh-replay-btn">🔁 重播</button><button class="btn btn-sm btn-a4" onclick="playStandardA()">A4</button></div>
+<div class="choice-grid" id="seventh-choices"></div></div>
+</div>
+
+<div class="view" id="view-seventhfull">
+<div class="card"><h2>🎷 七和弦综合</h2>
+<div class="score-bar"><div class="score-item"><div class="score-val" id="seventhfull-score">0</div><div class="score-label">得分</div></div><div class="score-item"><div class="score-val" id="seventhfull-round">0/10</div><div class="score-label">进度</div></div></div>
+<div class="progress-bar"><div class="progress-fill" id="seventhfull-progress" style="width:0"></div></div>
+<div class="feedback" id="seventhfull-fb">点击播放，选择七和弦类型与转位。</div>
+<div style="text-align:center;margin:8px 0"><button class="btn btn-primary" id="seventhfull-play-btn">▶ 播放七和弦</button><button class="btn btn-repeat btn-sm" id="seventhfull-replay-btn">🔁 重播</button><button class="btn btn-sm btn-a4" onclick="playStandardA()">A4</button></div>
+<div class="choice-grid" id="seventhfull-choices"></div></div>
 </div>
 
 <div class="view" id="view-mode">
@@ -172,7 +202,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;background
 <button class="tab-btn" data-tab="staffnote" onclick="switchTab(&apos;staffnote&apos;)"><span class="icon">🎼</span><span>识谱</span></button>
 <button class="tab-btn" data-tab="pitch" onclick="switchTab(&apos;pitch&apos;)"><span class="icon">🎹</span><span>音高</span></button>
 <button class="tab-btn" data-tab="interval" onclick="switchTab(&apos;interval&apos;)"><span class="icon">📏</span><span>音程</span></button>
-<button class="tab-btn" data-tab="chord" onclick="switchTab(&apos;chord&apos;)"><span class="icon">🎸</span><span>和弦</span></button>
+<button class="tab-btn" data-tab="chord" onclick="switchTab(&apos;chord&apos;)"><span class="icon">🎸</span><span>三辨</span></button>
+<button class="tab-btn" data-tab="triadfull" onclick="switchTab(&apos;triadfull&apos;)"><span class="icon">🔁</span><span>三综</span></button>
+<button class="tab-btn" data-tab="seventh" onclick="switchTab(&apos;seventh&apos;)"><span class="icon">🎷</span><span>七辨</span></button>
+<button class="tab-btn" data-tab="seventhfull" onclick="switchTab(&apos;seventhfull&apos;)"><span class="icon">🧩</span><span>七综</span></button>
 <button class="tab-btn" data-tab="mode" onclick="switchTab(&apos;mode&apos;)"><span class="icon">🎼</span><span>调式</span></button>
 </div>
 
@@ -320,21 +353,22 @@ function noteName(note, octave) {
 }
 
 // 和弦定义 (半音)
-const TRIAD_CHORDS = ["大三和弦", "小三和弦", "增三和弦", "减三和弦"]; 
-const SEVENTH_CHORDS = ["大七和弦", "属七和弦", "小七和弦", "小大七和弦", "半减七和弦", "减七和弦", "增大七和弦", "增属七和弦"]; 
+const TRIAD_CHORDS = ["大三和弦", "小三和弦", "增三和弦", "减三和弦", "sus4"]; 
+const SEVENTH_CHORDS = ["大小七和弦", "大大七和弦", "小小七和弦", "小大七和弦", "减减七和弦", "减小七和弦", "增小七和弦", "增大七和弦"]; 
 const CHORD_TYPES = {
   "大三和弦": { intervals: [0,4,7], emoji: "😊", desc: "明亮、稳定，由根音+大三度+纯五度构成" },
   "小三和弦": { intervals: [0,3,7], emoji: "😢", desc: "柔和、忧伤，由根音+小三度+纯五度构成" },
   "增三和弦": { intervals: [0,4,8], emoji: "😲", desc: "紧张、飘浮感，由根音+大三度+增五度构成" },
   "减三和弦": { intervals: [0,3,6], emoji: "😨", desc: "阴暗、不稳定，由根音+小三度+减五度构成" },
-  "大七和弦": { intervals: [0,4,7,11], emoji: "✨", desc: "梦幻、都市感，大三和弦+大七度" },
-  "属七和弦": { intervals: [0,4,7,10], emoji: "🎷", desc: "张力强、渴望解决，大三和弦+小七度" },
-  "小七和弦": { intervals: [0,3,7,10], emoji: "🎵", desc: "温柔、爵士感，小三和弦+小七度" },
-  "小大七和弦": { intervals: [0,3,7,11], emoji: "🌗", desc: "神秘紧张，小三和弦+大七度" },
-  "半减七和弦": { intervals: [0,3,6,10], emoji: "🌘", desc: "减三和弦+小七度，也叫小七降五" },
-  "减七和弦": { intervals: [0,3,6,9], emoji: "🌀", desc: "连续小三度叠置，悬疑而不稳定" },
-  "增大七和弦": { intervals: [0,4,8,11], emoji: "🌠", desc: "增三和弦+大七度，色彩明亮而悬浮" },
-  "增属七和弦": { intervals: [0,4,8,10], emoji: "⚡", desc: "增三和弦+小七度，爵士张力明显" }
+  "sus4": { intervals: [0,5,7], emoji: "🟦", desc: "挂四和弦，由根音+纯四度+纯五度构成" },
+  "大小七和弦": { intervals: [0,4,7,10], emoji: "🎷", desc: "大三和弦+小七度，也常称属七和弦" },
+  "大大七和弦": { intervals: [0,4,7,11], emoji: "✨", desc: "大三和弦+大七度，也常称大七和弦" },
+  "小小七和弦": { intervals: [0,3,7,10], emoji: "🎵", desc: "小三和弦+小七度，也常称小七和弦" },
+  "小大七和弦": { intervals: [0,3,7,11], emoji: "🌗", desc: "小三和弦+大七度，神秘紧张" },
+  "减减七和弦": { intervals: [0,3,6,9], emoji: "🌀", desc: "减三和弦+减七度，连续小三度叠置" },
+  "减小七和弦": { intervals: [0,3,6,10], emoji: "🌘", desc: "减三和弦+小七度，也叫半减七" },
+  "增小七和弦": { intervals: [0,4,8,10], emoji: "⚡", desc: "增三和弦+小七度，张力明显" },
+  "增大七和弦": { intervals: [0,4,8,11], emoji: "🌠", desc: "增三和弦+大七度，色彩明亮而悬浮" }
 };
 
 const CHORD_INVERSIONS = {
@@ -379,17 +413,17 @@ const MODE_TYPES = {
   "阿拉伯调式": { intervals: [0,1,4,5,7,8,11], emoji: "🧭", desc: "半音和增二度色彩明显，异域感强" }
 };
 
-const INTERVAL_ORDER = ["纯一度", "小二度", "大二度", "小三度", "大三度", "纯四度", "增四度/减五度", "纯五度", "小六度", "大六度", "小七度", "大七度", "纯八度"]; 
+const INTERVAL_ORDER = ["同度", "小二度/增一度", "大二度/减三度", "小三度/增二度", "大三度/减四度", "纯四度", "增四度/减五度", "纯五度", "小六度/增五度", "大六度", "小七度", "大七度", "纯八度"]; 
 const INTERVAL_TYPES = {
-  "纯一度": { semitones: 0, emoji: "🎯", desc: "同音重复，完全稳定" },
-  "小二度": { semitones: 1, emoji: "🪡", desc: "半音距离，紧张而靠近" },
-  "大二度": { semitones: 2, emoji: "👣", desc: "全音距离，旋律中很常见" },
-  "小三度": { semitones: 3, emoji: "🌧️", desc: "偏忧伤，是小三和弦的核心色彩" },
-  "大三度": { semitones: 4, emoji: "🌤️", desc: "明亮稳定，是大三和弦的核心色彩" },
+  "同度": { semitones: 0, emoji: "🎯", desc: "同音重复，完全稳定" },
+  "小二度/增一度": { semitones: 1, emoji: "🪡", desc: "半音距离，紧张而靠近" },
+  "大二度/减三度": { semitones: 2, emoji: "👣", desc: "全音距离，旋律中很常见" },
+  "小三度/增二度": { semitones: 3, emoji: "🌧️", desc: "偏忧伤，是小三和弦的核心色彩" },
+  "大三度/减四度": { semitones: 4, emoji: "🌤️", desc: "明亮稳定，是大三和弦的核心色彩" },
   "纯四度": { semitones: 5, emoji: "🏔️", desc: "开阔、庄重，常见于旋律跳进" },
   "增四度/减五度": { semitones: 6, emoji: "⚡", desc: "三全音，张力最强、最不稳定" },
   "纯五度": { semitones: 7, emoji: "🔔", desc: "非常协和、稳定，有空旷感" },
-  "小六度": { semitones: 8, emoji: "🌌", desc: "柔和带一点抒情张力" },
+  "小六度/增五度": { semitones: 8, emoji: "🌌", desc: "柔和带一点抒情张力" },
   "大六度": { semitones: 9, emoji: "🌈", desc: "明亮、舒展，歌唱性很强" },
   "小七度": { semitones: 10, emoji: "🎷", desc: "有属七或布鲁斯色彩，张力明显" },
   "大七度": { semitones: 11, emoji: "✨", desc: "接近八度，紧张且明亮" },
@@ -475,7 +509,7 @@ function addScore(game, points) {
 }
 function updateHomeStats() {
   const s = getScores();
-  const total = (s.pitch||0) + (s.interval||0) + (s.chord||0) + (s.mode||0) + (s.staff||0);
+  const total = (s.pitch||0) + (s.interval||0) + (s.chord||0) + (s.triadfull||0) + (s.seventh||0) + (s.seventhfull||0) + (s.mode||0) + (s.staff||0);
   document.getElementById("total-score").textContent = total;
   document.getElementById("total-rounds").textContent = s.totalRounds || 0;
   document.getElementById("total-streak").textContent = s.bestStreak || 0;
@@ -566,16 +600,18 @@ function closeModal(e) {
 function switchTab(name) {
   document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
   document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+  const chordTabs = ["chord", "triadfull", "seventh", "seventhfull"];
+  const realName = chordTabs.includes(name) ? "chord" : name;
   const view = document.getElementById("view-" + name);
   if (view) view.classList.add("active");
   const btn = document.querySelector('[data-tab="' + name + '"]');
   if (btn) btn.classList.add("active");
-  if (name === "theory") renderTheory();
-  if (name === "pitch") { pitchGame.init(); }
-  if (name === "interval") { intervalGame.init(); }
-  if (name === "chord") { chordGame.init(); }
-  if (name === "mode") { modeGame.init(); }
-  if (name === "staffnote") { staffGame.init(); }
+  if (realName === "theory") renderTheory();
+  if (realName === "pitch") { pitchGame.init(); }
+  if (realName === "interval") { intervalGame.init(); }
+  if (chordTabs.includes(name)) { chordGame.setMode(name); chordGame.init(); }
+  if (realName === "mode") { modeGame.init(); }
+  if (realName === "staffnote") { staffGame.init(); }
   updateHomeStats();
 }
 
@@ -1005,7 +1041,7 @@ const intervalGame = {
     this.getTypes().forEach(type => {
       const btn = document.createElement("button");
       btn.className = "btn-choice";
-      btn.textContent = INTERVAL_TYPES[type].emoji + " " + type;
+      btn.textContent = type;
       btn.addEventListener("click", () => this.onSelect(type, btn));
       container.appendChild(btn);
     });
@@ -1131,7 +1167,7 @@ function invertChordIntervals(intervals, inversionIndex) {
   return result;
 }
 
-const chordGame = {
+const legacyChordGame = {
   currentAnswer: null,
   currentChoice: null,
   currentNotes: null,
@@ -1291,6 +1327,189 @@ const chordGame = {
 };
 
 // ==================== 调式听辨游戏 ====================
+const CHORD_GAME_CONFIGS = {
+  chord: {
+    prefix: "triad",
+    scoreKey: "chord",
+    prompt: "点击播放，选择你听到的三和弦。",
+    playing: "听好了！选出三和弦类型 🎵",
+    choices: () => TRIAD_CHORDS.map(type => ({ key: chordChoiceKey(type, 0), type, inversionIndex: 0, label: type }))
+  },
+  triadfull: {
+    prefix: "triadfull",
+    scoreKey: "triadfull",
+    prompt: "点击播放，选择三和弦类型与转位。",
+    playing: "听好了！选出三和弦与转位 🎵",
+    choices: () => [
+      ...["大三和弦", "小三和弦", "减三和弦", "sus4"].flatMap(type => [0, 1, 2].map(i => ({ key: chordChoiceKey(type, i), type, inversionIndex: i, label: `${type}：${chordInversionName(i)}` }))),
+      { key: chordChoiceKey("增三和弦", 0), type: "增三和弦", inversionIndex: 0, label: "增三和弦：原位", spanFull: true }
+    ]
+  },
+  seventh: {
+    prefix: "seventh",
+    scoreKey: "seventh",
+    prompt: "点击播放，选择你听到的七和弦。",
+    playing: "听好了！选出七和弦类型 🎵",
+    choices: () => SEVENTH_CHORDS.map(type => ({ key: chordChoiceKey(type, 0), type, inversionIndex: 0, label: type }))
+  },
+  seventhfull: {
+    prefix: "seventhfull",
+    scoreKey: "seventhfull",
+    prompt: "点击播放，选择七和弦类型与转位。",
+    playing: "听好了！选出七和弦与转位 🎵",
+    choices: () => [
+      ...["大小七和弦", "大大七和弦", "小小七和弦", "小大七和弦", "减小七和弦"].flatMap(type => [0, 1, 2, 3].map(i => ({ key: chordChoiceKey(type, i), type, inversionIndex: i, label: `${type.replace("和弦", "")}：${chordInversionName(i)}` }))),
+      { key: chordChoiceKey("减减七和弦", 0), type: "减减七和弦", inversionIndex: 0, label: "减减七：原位", spanFull: true }
+    ]
+  }
+};
+
+const chordGame = {
+  mode: "chord",
+  currentAnswer: null,
+  currentChoice: null,
+  currentNotes: null,
+  score: 0,
+  round: 0,
+  totalRounds: 10,
+  locked: false,
+  setMode(mode) { this.mode = CHORD_GAME_CONFIGS[mode] ? mode : "chord"; },
+  config() { return CHORD_GAME_CONFIGS[this.mode]; },
+  init() {
+    this.reset();
+    const cfg = this.config();
+    const playBtn = document.getElementById(`${cfg.prefix}-play-btn`);
+    const replayBtn = document.getElementById(`${cfg.prefix}-replay-btn`);
+    if (playBtn && !playBtn.dataset.bound) { playBtn.addEventListener("click", () => this.playChord()); playBtn.dataset.bound = "1"; }
+    if (replayBtn && !replayBtn.dataset.bound) { replayBtn.addEventListener("click", () => this.replay()); replayBtn.dataset.bound = "1"; }
+  },
+  ids() {
+    const prefix = this.config().prefix;
+    return {
+      score: `${prefix}-score`,
+      round: `${prefix}-round`,
+      progress: `${prefix}-progress`,
+      feedback: `${prefix}-fb`,
+      choices: `${prefix}-choices`
+    };
+  },
+  reset() {
+    this.score = 0;
+    this.round = 0;
+    this.locked = false;
+    this.currentAnswer = null;
+    this.currentChoice = null;
+    this.currentNotes = null;
+    this.stopChord();
+    this.updateUI();
+    this.renderChoices();
+    const fb = document.getElementById(this.ids().feedback);
+    if (fb) { fb.textContent = this.config().prompt; fb.className = "feedback"; }
+  },
+  updateUI() {
+    const ids = this.ids();
+    const score = document.getElementById(ids.score);
+    const round = document.getElementById(ids.round);
+    const progress = document.getElementById(ids.progress);
+    if (score) score.textContent = this.score;
+    if (round) round.textContent = this.round + "/" + this.totalRounds;
+    if (progress) progress.style.width = (this.round / this.totalRounds * 100) + "%";
+  },
+  renderChoices() {
+    const container = document.getElementById(this.ids().choices);
+    if (!container) return;
+    container.innerHTML = "";
+    this.config().choices().forEach(choice => {
+      const btn = document.createElement("button");
+      btn.className = "btn-choice" + (choice.spanFull ? " span-full" : "");
+      btn.textContent = choice.label;
+      btn.dataset.key = choice.key;
+      btn.addEventListener("click", () => this.onSelect(choice.key, btn));
+      container.appendChild(btn);
+    });
+  },
+  stopChord() {
+    if (piano) piano.releaseAll();
+    if (this._chordTimer) { clearTimeout(this._chordTimer); this._chordTimer = null; }
+  },
+  buildNotes(choice) {
+    const rootNote = randomItem(["C","D","E","F","G","A"]);
+    const rootOctave = randomInRange(3, 4);
+    const intervals = invertChordIntervals(CHORD_TYPES[choice.type].intervals, choice.inversionIndex);
+    return intervals.map(i => {
+      const idx = NOTES.indexOf(rootNote) + i;
+      const note = NOTES[((idx % 12) + 12) % 12];
+      const octave = rootOctave + Math.floor(idx / 12);
+      return note + octave;
+    });
+  },
+  playCurrentNotes() {
+    const now = Tone.now();
+    this.currentNotes.forEach(n => { if (piano) piano.triggerAttack(n, now); });
+    this._chordTimer = setTimeout(() => { if (piano) piano.releaseAll(); this._chordTimer = null; }, 2500);
+  },
+  playChord() {
+    if (this.locked) return;
+    this.stopChord();
+    initAudio().then(() => {
+      const choices = this.config().choices();
+      this.currentChoice = randomItem(choices);
+      this.currentAnswer = this.currentChoice.key;
+      this.currentNotes = this.buildNotes(this.currentChoice);
+      this.playCurrentNotes();
+      const fb = document.getElementById(this.ids().feedback);
+      if (fb) { fb.textContent = this.config().playing; fb.className = "feedback"; }
+    });
+  },
+  replay() {
+    if (this.currentNotes && !this.locked) {
+      this.stopChord();
+      initAudio().then(() => this.playCurrentNotes());
+    }
+  },
+  onSelect(answerKey, btn) {
+    if (this.locked || !this.currentAnswer) return;
+    this.locked = true;
+    this.round++;
+    const isCorrect = answerKey === this.currentAnswer;
+    const fb = document.getElementById(this.ids().feedback);
+    const correctNotes = this.currentNotes ? this.currentNotes.slice() : null;
+    const buttons = document.querySelectorAll(`#${this.ids().choices} .btn-choice`);
+    buttons.forEach(b => {
+      if (b === btn) b.classList.add(isCorrect ? "correct" : "wrong");
+      if (b.dataset.key === this.currentAnswer) b.classList.add("correct");
+    });
+    if (isCorrect) {
+      this.score += 10;
+      if (fb) { fb.textContent = "✅ 正确！" + this.currentChoice.label + " - " + CHORD_TYPES[this.currentChoice.type].desc; fb.className = "feedback correct-fb"; }
+      addScore(this.config().scoreKey, 10);
+    } else {
+      if (fb) { fb.textContent = "❌ 这是 " + this.currentChoice.label; fb.className = "feedback wrong-fb"; }
+      setTimeout(() => {
+        if (!correctNotes) return;
+        if (piano) piano.releaseAll();
+        correctNotes.forEach(n => { if (piano) piano.triggerAttack(n, Tone.now()); });
+        setTimeout(() => { if (piano) piano.releaseAll(); }, 2500);
+      }, 500);
+    }
+    this.updateUI();
+    this.currentAnswer = null;
+    this.currentChoice = null;
+    this.currentNotes = null;
+    if (this.round >= this.totalRounds) {
+      setTimeout(() => {
+        if (fb) { fb.textContent = "🎉 本组完成！得分：" + this.score + "/" + (this.totalRounds * 10); fb.className = "feedback"; }
+        this.reset();
+      }, 2000);
+    } else {
+      setTimeout(() => {
+        this.locked = false;
+        buttons.forEach(b => b.classList.remove("correct", "wrong"));
+      }, 1500);
+    }
+  }
+};
+
 const modeGame = {
   currentAnswer: null,
   currentNotes: null,
