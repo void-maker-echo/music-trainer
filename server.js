@@ -10,6 +10,7 @@ const PORT = Number(process.env.PORT || 8789);
 const SESSION_TTL_MS = Number(process.env.SESSION_TTL_MS || 7 * 24 * 60 * 60 * 1000);
 const INVITE_SECRET = process.env.INVITE_SECRET || 'local-dev-invite-secret';
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || crypto.randomBytes(18).toString('base64url');
+const STATELESS_INVITES = process.env.VERCEL === '1' || process.env.INVITE_MODE === 'stateless';
 
 const sessions = new Map();
 let startupInvite = null;
@@ -40,6 +41,40 @@ function makeInviteCode() {
 
 function hashInvite(code) {
   return crypto.createHmac('sha256', INVITE_SECRET).update(normalizeInvite(code)).digest('hex');
+}
+
+function signValue(value, length = 24) {
+  return crypto.createHmac('sha256', INVITE_SECRET).update(value).digest('base64url').slice(0, length);
+}
+
+function timingSafeEqualString(a, b) {
+  const left = Buffer.from(String(a));
+  const right = Buffer.from(String(b));
+  return left.length === right.length && crypto.timingSafeEqual(left, right);
+}
+
+function createStatelessInvite(maxUses = 1) {
+  const expiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000;
+  const expiry = expiresAt.toString(36).toUpperCase();
+  const nonce = crypto.randomBytes(6).toString('base64url').replace(/[^A-Z0-9]/gi, '').toUpperCase().slice(0, 8);
+  const uses = Math.max(1, Math.min(Number(maxUses) || 1, 999)).toString(36).toUpperCase();
+  const payload = `${expiry}.${nonce}.${uses}`;
+  const signature = signValue(payload, 14).toUpperCase();
+  return `MT-${expiry}-${nonce}-${uses}-${signature}`;
+}
+
+function verifyStatelessInvite(code) {
+  const normalized = normalizeInvite(code);
+  const parts = normalized.split('-');
+  if (parts.length !== 5 || parts[0] !== 'MT') return { ok: false, reason: 'INVALID' };
+  const [, expiry, nonce, uses, signature] = parts;
+  if (!expiry || !nonce || !uses || !signature) return { ok: false, reason: 'INVALID' };
+  const payload = `${expiry}.${nonce}.${uses}`;
+  const expected = signValue(payload, 14).toUpperCase();
+  if (!timingSafeEqualString(signature, expected)) return { ok: false, reason: 'INVALID' };
+  const expiresAt = parseInt(expiry, 36);
+  if (!Number.isFinite(expiresAt) || expiresAt < Date.now()) return { ok: false, reason: 'USED' };
+  return { ok: true };
 }
 
 function ensureStore() {
@@ -78,6 +113,7 @@ function writeStore(store) {
 }
 
 function createInvite(maxUses = 1) {
+  if (STATELESS_INVITES) return createStatelessInvite(maxUses);
   const code = makeInviteCode();
   const store = readStore();
   store.invites.unshift({
@@ -96,6 +132,7 @@ function createInvite(maxUses = 1) {
 function verifyInvite(code) {
   const normalized = normalizeInvite(code);
   if (!normalized) return { ok: false, reason: 'EMPTY' };
+  if (STATELESS_INVITES) return verifyStatelessInvite(normalized);
 
   const store = readStore();
   const hash = hashInvite(normalized);
@@ -111,8 +148,22 @@ function verifyInvite(code) {
 
 function createSession() {
   const token = crypto.randomBytes(32).toString('base64url');
+  if (STATELESS_INVITES) {
+    const expiresAt = Date.now() + SESSION_TTL_MS;
+    const payload = `${expiresAt.toString(36)}.${token}`;
+    return `${payload}.${signValue(payload)}`;
+  }
   sessions.set(token, Date.now() + SESSION_TTL_MS);
   return token;
+}
+
+function verifyStatelessSession(token) {
+  const parts = String(token || '').split('.');
+  if (parts.length !== 3) return false;
+  const payload = `${parts[0]}.${parts[1]}`;
+  if (!timingSafeEqualString(parts[2], signValue(payload))) return false;
+  const expiresAt = parseInt(parts[0], 36);
+  return Number.isFinite(expiresAt) && expiresAt >= Date.now();
 }
 
 function parseCookies(req) {
@@ -131,6 +182,7 @@ function parseCookies(req) {
 function isAuthenticated(req) {
   const token = parseCookies(req).mt_session;
   if (!token) return false;
+  if (STATELESS_INVITES) return verifyStatelessSession(token);
   const expiresAt = sessions.get(token);
   if (!expiresAt) return false;
   if (expiresAt < Date.now()) {
@@ -273,6 +325,10 @@ async function handleApi(req, res, pathname) {
         sendJson(res, 403, { error: '管理员口令不正确' });
         return;
       }
+      if (STATELESS_INVITES) {
+        sendJson(res, 200, { invites: [], note: 'Vercel 部署使用无存储邀请码模式，不保存生成记录。' });
+        return;
+      }
       const store = readStore();
       sendJson(res, 200, {
         invites: store.invites.map(item => ({
@@ -334,15 +390,17 @@ async function handleRequest(req, res) {
   serveFile(req, res, filePath, 'no-store');
 }
 
-ensureStore();
+if (!STATELESS_INVITES) ensureStore();
 const server = http.createServer((req, res) => {
   handleRequest(req, res).catch(() => send(res, 500, 'Internal server error', { 'Content-Type': 'text/plain; charset=utf-8' }));
 });
 
-server.listen(PORT, () => {
+if (require.main === module) server.listen(PORT, () => {
   console.log(`音感训练营已启动: http://localhost:${PORT}`);
   console.log(`管理员页面: http://localhost:${PORT}/admin`);
   if (!process.env.ADMIN_TOKEN) console.log(`本次本地管理员口令: ${ADMIN_TOKEN}`);
   if (!process.env.INVITE_SECRET) console.log('提示: 正式部署请设置 INVITE_SECRET 环境变量。');
   if (startupInvite) console.log(`初始一次性邀请码: ${startupInvite}`);
 });
+
+module.exports = server;
