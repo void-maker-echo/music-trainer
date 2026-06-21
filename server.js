@@ -391,9 +391,11 @@ async function handleRequest(req, res) {
 }
 
 if (!STATELESS_INVITES) ensureStore();
-const server = http.createServer((req, res) => {
+function requestHandler(req, res) {
   handleRequest(req, res).catch(() => send(res, 500, 'Internal server error', { 'Content-Type': 'text/plain; charset=utf-8' }));
-});
+}
+
+const server = http.createServer(requestHandler);
 
 if (require.main === module) server.listen(PORT, () => {
   console.log(`音感训练营已启动: http://localhost:${PORT}`);
@@ -403,4 +405,4 @@ if (require.main === module) server.listen(PORT, () => {
   if (startupInvite) console.log(`初始一次性邀请码: ${startupInvite}`);
 });
 
-module.exports = server;
+module.exports = requestHandler;
