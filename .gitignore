@@ -6,3 +6,7 @@ patch_sw.py
 read.py
 scan*.py
 verify.py
+
+# Runtime data and secrets
+data/
+.env

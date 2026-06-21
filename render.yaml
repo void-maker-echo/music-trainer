@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: music-trainer
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SESSION_TTL_MS
+        value: "604800000"
+      - key: ADMIN_TOKEN
+        sync: false
+      - key: INVITE_SECRET
+        generateValue: true
