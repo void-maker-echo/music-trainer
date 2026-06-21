@@ -183,9 +183,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;background
 let piano;
 let audioContext;
 let masterGain;
-const activePianoVoices = new Set();
 let audioReady = false;
+let pianoSamplesPromise = null;
+const activePianoVoices = new Set();
+const pianoSampleBuffers = new Map();
 const Tone = { now: () => audioContext ? audioContext.currentTime : 0 };
+const PIANO_SAMPLE_FILES = {
+  "C2": "C2.mp3", "D#2": "Ds2.mp3", "F#2": "Fs2.mp3", "A2": "A2.mp3",
+  "C3": "C3.mp3", "D#3": "Ds3.mp3", "F#3": "Fs3.mp3", "A3": "A3.mp3",
+  "C4": "C4.mp3", "D#4": "Ds4.mp3", "F#4": "Fs4.mp3", "A4": "A4.mp3",
+  "C5": "C5.mp3", "D#5": "Ds5.mp3", "F#5": "Fs5.mp3", "A5": "A5.mp3",
+  "C6": "C6.mp3", "D#6": "Ds6.mp3", "F#6": "Fs6.mp3", "A6": "A6.mp3"
+};
 
 function midiFromNoteName(note) {
   const match = String(note || '').match(/^([A-G])(#?)(-?\d+)$/);
@@ -199,6 +208,27 @@ function noteToFrequency(note) {
   return 440 * Math.pow(2, (midiFromNoteName(note) - 69) / 12);
 }
 
+async function loadPianoSamples() {
+  if (pianoSamplesPromise) return pianoSamplesPromise;
+  pianoSamplesPromise = Promise.all(Object.entries(PIANO_SAMPLE_FILES).map(async ([note, file]) => {
+    const response = await fetch(`/assets/piano/${file}`, { cache: 'force-cache' });
+    if (!response.ok) throw new Error(`钢琴采样加载失败: ${file}`);
+    const buffer = await response.arrayBuffer();
+    const audioBuffer = await audioContext.decodeAudioData(buffer.slice(0));
+    pianoSampleBuffers.set(note, { note, midi: midiFromNoteName(note), buffer: audioBuffer });
+  }));
+  return pianoSamplesPromise;
+}
+
+function nearestPianoSample(note) {
+  const targetMidi = midiFromNoteName(note);
+  let best = null;
+  pianoSampleBuffers.forEach(sample => {
+    if (!best || Math.abs(sample.midi - targetMidi) < Math.abs(best.midi - targetMidi)) best = sample;
+  });
+  return { sample: best, targetMidi };
+}
+
 function secondsFromDuration(duration) {
   if (typeof duration === 'number') return duration;
   const map = { '1n': 4, '2n': 2, '4n': 1, '8n': 0.5, '16n': 0.25 };
@@ -207,65 +237,40 @@ function secondsFromDuration(duration) {
 
 function createPianoVoice(note, startTime, durationSeconds) {
   const ctx = audioContext;
-  const baseFreq = noteToFrequency(note);
-  const voiceGain = ctx.createGain();
-  const filter = ctx.createBiquadFilter();
+  const { sample, targetMidi } = nearestPianoSample(note);
+  if (!sample) return { stop() {} };
   const now = ctx.currentTime;
   const start = Math.max(startTime || now, now + 0.002);
   const duration = Math.max(0.08, durationSeconds || 1);
   const releaseStart = start + duration;
-  const end = releaseStart + 1.7;
+  const releaseTime = 1.2;
+  const source = ctx.createBufferSource();
+  const gain = ctx.createGain();
+  source.buffer = sample.buffer;
+  source.playbackRate.setValueAtTime(Math.pow(2, (targetMidi - sample.midi) / 12), start);
+  gain.gain.setValueAtTime(0.0001, start);
+  gain.gain.exponentialRampToValueAtTime(0.95, start + 0.006);
+  gain.gain.exponentialRampToValueAtTime(0.82, start + 0.08);
+  gain.gain.setValueAtTime(0.82, releaseStart);
+  gain.gain.exponentialRampToValueAtTime(0.0001, releaseStart + releaseTime);
+  source.connect(gain);
+  gain.connect(masterGain);
+  source.start(start);
+  source.stop(releaseStart + releaseTime + 0.05);
 
-  filter.type = 'lowpass';
-  filter.frequency.setValueAtTime(Math.min(9000, baseFreq * 10), start);
-  filter.frequency.exponentialRampToValueAtTime(Math.max(1700, baseFreq * 4.2), releaseStart + 0.45);
-  filter.Q.setValueAtTime(0.35, start);
-  filter.connect(masterGain);
-
-  voiceGain.gain.setValueAtTime(0.0001, start);
-  voiceGain.gain.exponentialRampToValueAtTime(0.75, start + 0.012);
-  voiceGain.gain.exponentialRampToValueAtTime(0.34, start + 0.16);
-  voiceGain.gain.exponentialRampToValueAtTime(0.16, releaseStart);
-  voiceGain.gain.exponentialRampToValueAtTime(0.0001, end);
-  voiceGain.connect(filter);
-
-  const partials = [
-    { ratio: 1, gain: 1, detune: 0 },
-    { ratio: 2.01, gain: 0.42, detune: -2 },
-    { ratio: 3.01, gain: 0.21, detune: 3 },
-    { ratio: 4.02, gain: 0.11, detune: -4 },
-    { ratio: 5.03, gain: 0.055, detune: 5 }
-  ];
-  const oscillators = partials.map(partial => {
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(baseFreq * partial.ratio, start);
-    osc.detune.setValueAtTime(partial.detune, start);
-    gain.gain.setValueAtTime(0.2 * partial.gain, start);
-    osc.connect(gain);
-    gain.connect(voiceGain);
-    osc.start(start);
-    osc.stop(end + 0.05);
-    return osc;
-  });
-
-  const noiseBuffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.045), ctx.sampleRate);
-  const samples = noiseBuffer.getChannelData(0);
-  for (let i = 0; i < samples.length; i += 1) samples[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / samples.length, 2);
-  const noise = ctx.createBufferSource();
-  const noiseGain = ctx.createGain();
-  noise.buffer = noiseBuffer;
-  noiseGain.gain.setValueAtTime(0.018, start);
-  noiseGain.gain.exponentialRampToValueAtTime(0.0001, start + 0.05);
-  noise.connect(noiseGain);
-  noiseGain.connect(filter);
-  noise.start(start);
-  noise.stop(start + 0.055);
-
-  const voice = { stop() { voiceGain.gain.cancelScheduledValues(ctx.currentTime); voiceGain.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.16); } };
+  let stopped = false;
+  const voice = {
+    stop() {
+      if (stopped) return;
+      stopped = true;
+      const t = ctx.currentTime;
+      gain.gain.cancelScheduledValues(t);
+      gain.gain.setTargetAtTime(0.0001, t, 0.08);
+      try { source.stop(t + 0.35); } catch (error) {}
+    }
+  };
   activePianoVoices.add(voice);
-  setTimeout(() => activePianoVoices.delete(voice), Math.max(0, (end - now) * 1000 + 80));
+  setTimeout(() => activePianoVoices.delete(voice), Math.max(0, (releaseStart + releaseTime - now) * 1000 + 120));
   return voice;
 }
 
@@ -294,7 +299,7 @@ function initAudio() {
   }
   piano = createPianoInstrument();
   audioReady = true;
-  return audioContext.resume();
+  return audioContext.resume().then(loadPianoSamples);
 }
 
 // ==================== 乐理数据 ====================

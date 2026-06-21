@@ -25,7 +25,8 @@ const MIME_TYPES = {
   '.jpg': 'image/jpeg',
   '.jpeg': 'image/jpeg',
   '.webp': 'image/webp',
-  '.ico': 'image/x-icon'
+  '.ico': 'image/x-icon',
+  '.mp3': 'audio/mpeg'
 };
 
 function normalizeInvite(code) {
@@ -354,6 +355,16 @@ async function handleRequest(req, res) {
 
   if (pathname === '/favicon.ico') {
     send(res, 204, '', { 'Cache-Control': 'public, max-age=86400' });
+    return;
+  }
+
+  if (pathname.startsWith('/assets/')) {
+    const assetPath = safeStaticPath(pathname);
+    if (!assetPath) {
+      send(res, 400, 'Bad request', { 'Content-Type': 'text/plain; charset=utf-8' });
+      return;
+    }
+    serveFile(req, res, assetPath, 'public, max-age=31536000, immutable');
     return;
   }
 
