@@ -44,7 +44,8 @@ function hashInvite(code) {
 }
 
 function signValue(value, length = 24) {
-  return crypto.createHmac('sha256', INVITE_SECRET).update(value).digest('base64url').slice(0, length);
+  const signature = crypto.createHmac('sha256', INVITE_SECRET).update(value).digest('base64url').replace(/[^A-Za-z0-9]/g, '');
+  return signature.slice(0, length);
 }
 
 function timingSafeEqualString(a, b) {
