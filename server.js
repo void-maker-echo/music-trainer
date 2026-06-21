@@ -48,6 +48,12 @@ function signValue(value, length = 24) {
   return signature.slice(0, length);
 }
 
+function makeNumericInviteCode() {
+  const digest = crypto.createHmac('sha256', INVITE_SECRET).update('music-trainer-numeric-invite').digest();
+  const value = digest.readUInt32BE(0) % 100000000;
+  return String(value).padStart(8, '0');
+}
+
 function timingSafeEqualString(a, b) {
   const left = Buffer.from(String(a));
   const right = Buffer.from(String(b));
@@ -55,27 +61,14 @@ function timingSafeEqualString(a, b) {
 }
 
 function createStatelessInvite(maxUses = 1) {
-  const expiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000;
-  const expiry = expiresAt.toString(36).toUpperCase();
-  const nonce = crypto.randomBytes(6).toString('base64url').replace(/[^A-Z0-9]/gi, '').toUpperCase().slice(0, 8);
-  const uses = Math.max(1, Math.min(Number(maxUses) || 1, 999)).toString(36).toUpperCase();
-  const payload = `${expiry}.${nonce}.${uses}`;
-  const signature = signValue(payload, 14).toUpperCase();
-  return `MT-${expiry}-${nonce}-${uses}-${signature}`;
+  return makeNumericInviteCode();
 }
 
 function verifyStatelessInvite(code) {
   const normalized = normalizeInvite(code);
-  const parts = normalized.split('-');
-  if (parts.length !== 5 || parts[0] !== 'MT') return { ok: false, reason: 'INVALID' };
-  const [, expiry, nonce, uses, signature] = parts;
-  if (!expiry || !nonce || !uses || !signature) return { ok: false, reason: 'INVALID' };
-  const payload = `${expiry}.${nonce}.${uses}`;
-  const expected = signValue(payload, 14).toUpperCase();
-  if (!timingSafeEqualString(signature, expected)) return { ok: false, reason: 'INVALID' };
-  const expiresAt = parseInt(expiry, 36);
-  if (!Number.isFinite(expiresAt) || expiresAt < Date.now()) return { ok: false, reason: 'USED' };
-  return { ok: true };
+  const expected = makeNumericInviteCode();
+  if (!/^\d{8}$/.test(normalized)) return { ok: false, reason: 'INVALID' };
+  return timingSafeEqualString(normalized, expected) ? { ok: true } : { ok: false, reason: 'INVALID' };
 }
 
 function ensureStore() {
